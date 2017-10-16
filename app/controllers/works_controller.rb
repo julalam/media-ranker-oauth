@@ -3,6 +3,8 @@ class WorksController < ApplicationController
   # of work we're dealing with
   before_action :category_from_work, except: [:root, :index, :new, :create]
 
+  skip_before_action :require_login, only: [:root]
+
   def root
     @albums = Work.best_albums
     @books = Work.best_books
@@ -20,6 +22,7 @@ class WorksController < ApplicationController
 
   def create
     @work = Work.new(media_params)
+    @work[:user_id] = session[:user_id]
     @media_category = @work.category
     if @work.save
       flash[:status] = :success
@@ -38,6 +41,12 @@ class WorksController < ApplicationController
   end
 
   def edit
+    unless @work.user_id == session[:user_id]
+      flash[:status] = :failure
+      flash[:result_text] = "Only the owner of the work can update it"
+      redirect_to root_path
+    end
+
   end
 
   def update
@@ -55,6 +64,12 @@ class WorksController < ApplicationController
   end
 
   def destroy
+    unless @work.user_id == session[:user_id]
+      flash[:status] = :failure
+      flash[:result_text] = "Only the owner of the work can delete it"
+      redirect_to root_path
+      return
+    end
     @work.destroy
     flash[:status] = :success
     flash[:result_text] = "Successfully destroyed #{@media_category.singularize} #{@work.id}"
